@@ -1,0 +1,212 @@
+<script>
+// Radhika Mattoo, radhika095@gmail.com
+document.addEventListener("DOMContentLoaded", (event) =>{
+  // Setup variables
+  const pauseImageURL = "/s/white-pause-icon.png";
+  const playImageURL = "/s/white-play-icon.png";
+
+  // Upload new mp3s in Pages --> + --> Link --> Gear icon --> File
+  // To change the audio file(s), change the filename and keep the '/s/'
+
+  // STELLO
+  const stelloBeforeURL = "/s/stello-before.mp3";
+  const stelloAfterURL = "/s/stello-after.mp3";
+  // IDs for UI elements (before/after buttons and play/pause icons)- do not change these (unless you change the UI)
+  const stelloBeforeID = "block-4ca488f058ab0bd6ec81";
+  const stelloAfterID = "block-245d4384e9e7d4d902a0";
+  const stelloPlayID = "block-yui_3_17_2_1_1636668268062_7838";
+
+
+  // ARMLEGLEGARMHEAD
+  const armLegBeforeURL = "/s/arm-leg-before.mp3";
+  const armLegAfterURL = "/s/arm-leg-after.mp3";
+  // IDs for UI elements (before/after buttons and play/pause icons)- do not change these (unless you change the UI)
+  const armLegBeforeID = "block-cd75eb43d90d46417cc3";
+  const armLegAfterID = "block-771b8647d4bd0caafb32";
+  const armLegPlayID = "block-yui_3_17_2_1_1636668268062_28971";
+
+
+  // SONDER
+  const sonderBeforeURL = "/s/sonder-before.mp3";
+  const sonderAfterURL = "/s/sonder-after.mp3";
+  // IDs for UI elements (before/after buttons and play/pause icons)- do not change these (unless you change the UI)
+  const sonderBeforeID = "block-63e273e67bd62ec8f654";
+  const sonderAfterID = "block-476aee38af55db202786";
+  const sonderPlayID = "block-yui_3_17_2_1_1636668268062_31722";
+
+
+  class MixComparison {
+    constructor(beforeID, afterID, playID, beforeURL, afterURL){
+      // Buttons/images
+      const [beforeButton, afterButton, playElement, playImageElement] = this.initializeUIElements(beforeID, afterID, playID);
+      this.beforeButton = beforeButton;
+      this.afterButton = afterButton;
+      this.playElement = playElement;
+      this.playImageElement = playImageElement;
+
+      // Audio elements
+      const [beforeAudioElement, afterAudioElement] = this.createAudioElements(beforeURL, afterURL);
+      this.beforeAudioElement = beforeAudioElement;
+      this.afterAudioElement = afterAudioElement;
+
+      // Controller variables
+      this.currentlySelectedAudioElement = this.beforeAudioElement;
+      this.currentlyPlaying = false;
+      this.currentTime = 0.0;
+    }
+
+    setButtonStyle(transparentButton, whiteButton){
+      transparentButton.style.background = "transparent";
+      transparentButton.style.color = "white";
+
+      whiteButton.style.background = "white";
+      whiteButton.style.color = "black";
+    }
+
+    // Handles switching mixes (before/after buttons)
+    selectMix(evt, buttonType){
+
+      evt.preventDefault(); // Prevent page refresh
+
+      if(buttonType == "before"){
+        this.setButtonStyle(this.afterButton, this.beforeButton);
+
+        // Switching from after to before in the middle of play
+        if(this.currentlyPlaying && this.beforeAudioElement.paused){
+          this.pause();
+          this.currentlySelectedAudioElement = this.beforeAudioElement;
+          this.play();
+        }else{
+          this.currentlySelectedAudioElement = this.beforeAudioElement;
+        }
+
+      }else{
+        this.setButtonStyle(this.beforeButton, this.afterButton);
+
+        // Switching from before to after in the middle of play
+        if(this.currentlyPlaying && this.afterAudioElement.paused){
+          this.pause();
+          this.currentlySelectedAudioElement = this.afterAudioElement;
+          this.play();
+        }else{
+          this.currentlySelectedAudioElement = this.afterAudioElement;
+        }
+
+      }
+    }
+
+    initializeUIElements(beforeID, afterID, playID){
+      // Button styling and evt listeners
+      const beforeButton = document.getElementById(beforeID).getElementsByTagName('a')[0];
+      const afterButton = document.getElementById(afterID).getElementsByTagName('a')[0];
+
+      this.setButtonStyle(afterButton, beforeButton);
+
+      beforeButton.addEventListener("click", (e) => this.selectMix(e, "before"), false);
+      afterButton.addEventListener("click", (e) => this.selectMix(e, "after"), false);
+
+      // Play/pause DOM elements
+      const playElement = document.getElementById(playID).getElementsByTagName('figure')[0];
+      const playImageElement = playElement.getElementsByTagName('img')[0];
+
+      return [beforeButton, afterButton, playElement, playImageElement];
+    }
+
+    createAudioElement(audioURL){
+      const audioElement = document.createElement('audio');
+      audioElement.style.display = 'none';
+      audioElement.src = audioURL;
+      audioElement.type = 'audio/mpeg';
+
+      return audioElement;
+    }
+
+    createAudioElements(beforeURL, afterURL){
+      const beforeAudioElement = this.createAudioElement(beforeURL);
+      const afterAudioElement = this.createAudioElement(afterURL);
+
+      return [beforeAudioElement, afterAudioElement];
+    }
+
+    play(){
+      this.currentlySelectedAudioElement.currentTime = this.currentTime;
+      this.currentlySelectedAudioElement.play();
+      this.currentlyPlaying = true;
+      this.playImageElement.src = pauseImageURL;
+    }
+
+    pause(){
+      this.currentlySelectedAudioElement.pause();
+      this.currentTime = this.currentlySelectedAudioElement.currentTime;
+      this.currentlyPlaying = false;
+      this.playImageElement.src = playImageURL;
+    }
+  }
+
+  class MixComparisonManager {
+    constructor(mixes){
+      this.mixes = mixes;
+
+      // Controller variables
+      this.currentlyPlaying = false;
+      this.currentlyPlayingMix = null;
+
+      for(let mix of mixes){
+        const playButton = mix.playElement;
+        const beforeAudio = mix.beforeAudioElement;
+        const afterAudio = mix.afterAudioElement;
+
+        playButton.addEventListener("click", this.handlePlayClicked.bind(this, mix), false);
+
+        // Add audio evt listener
+        beforeAudio.addEventListener("ended", this.handleAudioEnd.bind(this, mix));
+        afterAudio.addEventListener("ended", this.handleAudioEnd.bind(this, mix));
+      }
+
+    }
+
+    // Handles clicking play/pause image
+    handlePlayClicked(mix){
+      if(this.currentlyPlaying){ // Playing current mix or other mix?
+        if(this.currentlyPlayingMix == mix){ // Pause current mix
+          mix.pause();
+          this.currentlyPlaying = false;
+          this.currentlyPlayingMix = null;
+        }else{ // Playing different mix, pause the other mix and play this one
+          this.currentlyPlayingMix.pause();
+          mix.play();
+          this.currentlyPlayingMix = mix;
+        }
+      }else{
+        mix.play();
+        this.currentlyPlayingMix = mix;
+        this.currentlyPlaying = true;
+      }
+    }
+
+    // Handles when an audio finishes playing
+    handleAudioEnd(mix){
+      this.currentlyPlaying = false;
+      this.currentlyPlayingMix = null;
+
+      mix.playImageElement.src = playImageURL;
+      mix.currentlyPlaying = false;
+      mix.currentTime = 0.0;
+    }
+  }
+
+
+  const stelloMixComparison = new MixComparison(stelloBeforeID, stelloAfterID, stelloPlayID, stelloBeforeURL, stelloAfterURL);
+  const armLegMixComparison = new MixComparison(armLegBeforeID, armLegAfterID, armLegPlayID, armLegBeforeURL, armLegAfterURL);
+  const sonderMixComparison = new MixComparison(sonderBeforeID, sonderAfterID, sonderPlayID, sonderBeforeURL, sonderAfterURL);
+
+  const mixes = [
+    stelloMixComparison,
+    armLegMixComparison,
+    sonderMixComparison
+  ]
+
+  const mixComparisonManager = new MixComparisonManager(mixes);
+
+})
+</script>
